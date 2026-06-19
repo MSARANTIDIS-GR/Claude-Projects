@@ -123,59 +123,68 @@ export default function CalendarScreen({ challenge }: Props) {
         <LegendItem color="bg-gray-900" label="Future" />
       </div>
 
-      {/* Day detail bottom sheet */}
+      {/* Day detail bottom sheet — z-[60] sits above the bottom nav (z-50) */}
       {selectedDay && (
-        <div className="fixed inset-0 z-40 flex items-end" onClick={() => setSelectedDay(null)}>
+        <div className="fixed inset-0 z-[60] flex items-end" onClick={() => setSelectedDay(null)}>
+          {/* Scrim */}
+          <div className="absolute inset-0 bg-black/50" />
+
           <div
-            className="w-full max-w-lg mx-auto bg-gray-900 border border-gray-700 rounded-t-3xl p-5 space-y-4 shadow-2xl animate-sheet-up"
+            className="relative w-full max-w-lg mx-auto bg-gray-900 border border-gray-700 rounded-t-3xl shadow-2xl animate-sheet-up flex flex-col max-h-[80svh]"
             onClick={e => e.stopPropagation()}
           >
-            {/* Handle */}
-            <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto" />
+            {/* Handle — always visible, never scrolls */}
+            <div className="shrink-0 flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-gray-700 rounded-full" />
+            </div>
 
-            <div className="flex items-center justify-between">
+            {/* Header — always visible */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-3">
               <div>
                 <p className="text-white font-bold text-lg">Day {selectedDay.dayNum}</p>
                 <p className="text-gray-400 text-sm">{formatDate(selectedDay.dateStr)}</p>
               </div>
               <button
                 onClick={() => setSelectedDay(null)}
-                className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400"
+                className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 active:scale-90 transition-transform"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {!selectedRecord ? (
-              <p className="text-gray-500 text-sm text-center py-4">No data recorded for this day.</p>
-            ) : (
-              <>
-                <div className={`text-center py-2 rounded-xl text-sm font-semibold
-                  ${selectedRecord.completed ? 'bg-emerald-900/40 text-emerald-300' : 'bg-red-900/30 text-red-400'}`}>
-                  {selectedRecord.completed ? '✓ Day Complete' : '✗ Not Completed'}
-                </div>
-                <div className="space-y-2">
-                  {taskBreakdown(selectedRecord).map((t, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className={t.done ? 'text-emerald-400' : 'text-gray-600'}>{t.icon}</span>
-                      <span className={`text-sm flex-1 ${t.done ? 'text-gray-200' : 'text-gray-500 line-through'}`}>
-                        {t.label}
-                      </span>
-                      {t.done
-                        ? <CheckCircle2 size={16} className="text-emerald-500" strokeWidth={2.5} />
-                        : <XCircle size={16} className="text-red-800" strokeWidth={1.5} />
-                      }
-                    </div>
-                  ))}
-                </div>
-                {selectedRecord.notes && (
-                  <div className="bg-gray-800 rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">Notes</p>
-                    <p className="text-sm text-gray-300 leading-relaxed">{selectedRecord.notes}</p>
+            {/* Scrollable content */}
+            <div className="overflow-y-auto px-5 pb-6 space-y-3">
+              {!selectedRecord ? (
+                <p className="text-gray-500 text-sm text-center py-4">No data recorded for this day.</p>
+              ) : (
+                <>
+                  <div className={`text-center py-2 rounded-xl text-sm font-semibold
+                    ${selectedRecord.completed ? 'bg-emerald-900/40 text-emerald-300' : 'bg-red-900/30 text-red-400'}`}>
+                    {selectedRecord.completed ? '✓ Day Complete' : '✗ Not Completed'}
                   </div>
-                )}
-              </>
-            )}
+                  <div className="space-y-2">
+                    {taskBreakdown(selectedRecord).map((t, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className={t.done ? 'text-emerald-400' : 'text-gray-600'}>{t.icon}</span>
+                        <span className={`text-sm flex-1 ${t.done ? 'text-gray-200' : 'text-gray-500 line-through'}`}>
+                          {t.label}
+                        </span>
+                        {t.done
+                          ? <CheckCircle2 size={16} className="text-emerald-500" strokeWidth={2.5} />
+                          : <XCircle size={16} className="text-red-800" strokeWidth={1.5} />
+                        }
+                      </div>
+                    ))}
+                  </div>
+                  {selectedRecord.notes && (
+                    <div className="bg-gray-800 rounded-xl p-3">
+                      <p className="text-xs text-gray-500 mb-1">Notes</p>
+                      <p className="text-sm text-gray-300 leading-relaxed">{selectedRecord.notes}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
