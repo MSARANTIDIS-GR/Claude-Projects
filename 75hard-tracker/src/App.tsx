@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useChallenge } from './store/useChallenge';
+import { usePWAInstall } from './hooks/usePWAInstall';
 import BottomNav, { type Tab } from './components/BottomNav';
 import ResetModal from './components/ResetModal';
+import InstallBanner from './components/InstallBanner';
+import SettingsSheet from './components/SettingsSheet';
 import StartScreen from './screens/StartScreen';
 import TodayScreen from './screens/TodayScreen';
 import CalendarScreen from './screens/CalendarScreen';
@@ -10,19 +13,16 @@ import CompletionScreen from './screens/CompletionScreen';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('today');
+  const [showSettings, setShowSettings] = useState(false);
   const challenge = useChallenge();
+  const pwa = usePWAInstall();
   const { state, showResetModal, resetChallenge, startChallenge } = challenge;
 
   if (!state.isActive) {
-    return (
-      <StartScreen
-        bestStreak={state.bestStreak}
-        onStart={startChallenge}
-      />
-    );
+    return <StartScreen bestStreak={state.bestStreak} onStart={startChallenge} />;
   }
 
-  // Challenge complete: day 75 record exists and is completed
+  // Check if day 75 is complete
   const day75Done =
     state.currentDay >= 75 &&
     state.challengeStartDate !== null &&
@@ -45,14 +45,24 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {showResetModal && (
-        <ResetModal
-          currentDay={state.currentDay}
-          onReset={resetChallenge}
-        />
+        <ResetModal currentDay={state.currentDay} onReset={resetChallenge} />
       )}
 
-      <main className="pb-20">
-        {activeTab === 'today' && <TodayScreen challenge={challenge} />}
+      {pwa.canInstall && !showResetModal && (
+        <InstallBanner onInstall={pwa.install} onDismiss={pwa.dismiss} />
+      )}
+
+      <SettingsSheet
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        state={state}
+        onReset={() => { resetChallenge(); setShowSettings(false); }}
+      />
+
+      <main className={`pb-safe-nav ${pwa.canInstall ? 'pt-14' : ''}`}>
+        {activeTab === 'today' && (
+          <TodayScreen challenge={challenge} onOpenSettings={() => setShowSettings(true)} />
+        )}
         {activeTab === 'calendar' && <CalendarScreen challenge={challenge} />}
         {activeTab === 'photos' && <PhotosScreen challenge={challenge} />}
       </main>

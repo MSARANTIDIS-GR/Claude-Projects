@@ -1,4 +1,5 @@
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { haptic } from '../utils/haptics';
 
 interface Props {
   currentDay: number;
@@ -9,8 +10,8 @@ export default function ResetModal({ currentDay, onReset }: Props) {
   const daysCompleted = currentDay - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-gray-900 border border-red-900/60 rounded-3xl p-6 space-y-6 shadow-2xl shadow-red-900/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="w-full max-w-sm bg-gray-900 border border-red-900/60 rounded-3xl p-6 space-y-6 shadow-2xl shadow-red-900/20 animate-slide-up">
 
         {/* Icon */}
         <div className="flex justify-center">
@@ -41,9 +42,9 @@ export default function ResetModal({ currentDay, onReset }: Props) {
           </p>
         </div>
 
-        {/* Reset button */}
+        {/* Reset button — only way to close */}
         <button
-          onClick={onReset}
+          onClick={() => { haptic('heavy'); onReset(); }}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-lg transition-all active:scale-95 shadow-lg shadow-red-900/40"
         >
           <RefreshCw size={20} strokeWidth={2.5} />

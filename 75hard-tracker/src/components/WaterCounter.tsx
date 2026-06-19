@@ -1,5 +1,6 @@
 import { Minus, Plus } from 'lucide-react';
 import { WATER_TARGET_OZ } from '../utils/challenge';
+import { haptic } from '../utils/haptics';
 
 interface Props {
   oz: number;
@@ -12,8 +13,8 @@ export default function WaterCounter({ oz, onChange }: Props) {
   const pct = Math.min((oz / WATER_TARGET_OZ) * 100, 100);
   const done = oz >= WATER_TARGET_OZ;
 
-  const add = (amount: number) => onChange(Math.min(oz + amount, WATER_TARGET_OZ + 32));
-  const sub = (amount: number) => onChange(Math.max(oz - amount, 0));
+  const add = (amount: number) => { haptic(); onChange(Math.min(oz + amount, WATER_TARGET_OZ + 32)); };
+  const sub = (amount: number) => { haptic(); onChange(Math.max(oz - amount, 0)); };
 
   return (
     <div className="space-y-3">

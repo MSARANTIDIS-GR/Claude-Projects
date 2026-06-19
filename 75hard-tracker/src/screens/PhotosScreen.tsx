@@ -81,7 +81,7 @@ export default function PhotosScreen({ challenge }: Props) {
 
       {/* Lightbox */}
       {active && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-fade-in">
           {/* Top bar */}
           <div className="flex items-center justify-between px-4 py-3 shrink-0">
             <div>

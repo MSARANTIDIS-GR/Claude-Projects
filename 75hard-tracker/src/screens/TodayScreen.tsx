@@ -1,15 +1,17 @@
-import { Dumbbell, Leaf, Droplets, BookOpen, Camera, Sun, TreePine, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dumbbell, Leaf, Droplets, BookOpen, Camera, Sun, TreePine, Trophy, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { useState } from 'react';
 import TaskCard from '../components/TaskCard';
 import WaterCounter from '../components/WaterCounter';
 import PageCounter from '../components/PageCounter';
 import PhotoCapture from '../components/PhotoCapture';
+import { haptic } from '../utils/haptics';
 import type { useChallenge } from '../store/useChallenge';
 
 type ChallengeHook = ReturnType<typeof useChallenge>;
 
 interface Props {
   challenge: ChallengeHook;
+  onOpenSettings: () => void;
 }
 
 function WorkoutCard({
@@ -33,9 +35,8 @@ function WorkoutCard({
       subtitle={num === 1 ? 'First workout of the day' : 'Second workout (at least one must be outdoors)'}
       onToggle={onToggleDone}
     >
-      {/* Outdoor toggle */}
       <button
-        onClick={onToggleOutdoor}
+        onClick={() => { haptic(); onToggleOutdoor(); }}
         disabled={!done}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all
           ${!done ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
@@ -51,7 +52,7 @@ function WorkoutCard({
   );
 }
 
-export default function TodayScreen({ challenge }: Props) {
+export default function TodayScreen({ challenge, onOpenSettings }: Props) {
   const { state, todayRecord, updateTodayRecord } = challenge;
   const [showNotes, setShowNotes] = useState(false);
 
@@ -59,15 +60,15 @@ export default function TodayScreen({ challenge }: Props) {
   const pct = Math.round((day / 75) * 100);
   const isComplete = todayRecord.completed;
 
-  const outdoorCount = (todayRecord.workout1Outdoor ? 1 : 0) + (todayRecord.workout2Outdoor ? 1 : 0);
-  const outdoorWarning = todayRecord.workout1 && todayRecord.workout2 && outdoorCount === 0;
+  const outdoorWarning =
+    todayRecord.workout1 && todayRecord.workout2 &&
+    !todayRecord.workout1Outdoor && !todayRecord.workout2Outdoor;
 
-  // Task completion status for the summary banner
   const tasks = [
     todayRecord.diet,
     todayRecord.workout1,
     todayRecord.workout2,
-    (todayRecord.workout1Outdoor || todayRecord.workout2Outdoor),
+    todayRecord.workout1Outdoor || todayRecord.workout2Outdoor,
     todayRecord.waterOz >= 128,
     todayRecord.pagesRead >= 10,
     todayRecord.photoTaken,
@@ -78,48 +79,56 @@ export default function TodayScreen({ challenge }: Props) {
     <div className="max-w-lg mx-auto px-4 pt-6 pb-4 space-y-4">
 
       {/* Header */}
-      <div className="text-center space-y-1 pb-2">
+      <div className="text-center space-y-1 pb-2 relative">
+        <button
+          onClick={() => { haptic(); onOpenSettings(); }}
+          className="absolute right-0 top-0 p-1.5 text-gray-600 hover:text-gray-400 transition-colors active:scale-90"
+          aria-label="Settings"
+        >
+          <Settings size={20} />
+        </button>
+
         <p className="text-orange-400 text-sm font-semibold uppercase tracking-widest">75 Hard</p>
         <h1 className="text-5xl font-black text-white">
           Day {day} <span className="text-gray-600 font-light text-3xl">/ 75</span>
         </h1>
 
-        {/* Progress bar */}
         <div className="mt-3 relative h-2 bg-gray-800 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${isComplete ? 'bg-emerald-500' : 'bg-orange-500'}`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-xs text-gray-500">{pct}% complete</p>
+        <p className="text-xs text-gray-500">{pct}% of the challenge complete</p>
       </div>
 
       {/* Day Complete Banner */}
       {isComplete && (
-        <div className="bg-emerald-900/50 border border-emerald-600/60 rounded-2xl p-4 flex items-center gap-3 animate-pulse-once">
-          <Trophy size={28} className="text-emerald-400 shrink-0" />
+        <div className="bg-emerald-900/50 border border-emerald-600/60 rounded-2xl p-4 flex items-center gap-3 animate-slide-up">
+          <Trophy size={28} className="text-emerald-400 shrink-0 animate-check-pop" />
           <div>
-            <p className="text-emerald-300 font-bold text-base">Day {day} Complete!</p>
-            <p className="text-emerald-600 text-xs">All 5 tasks crushed. Rest up, comeback tomorrow.</p>
+            <p className="text-emerald-300 font-bold text-base">Day {day} Complete! 🔥</p>
+            <p className="text-emerald-600 text-xs">All 5 tasks crushed. Rest up, come back tomorrow.</p>
           </div>
         </div>
       )}
 
       {/* Outdoor warning */}
       {outdoorWarning && (
-        <div className="bg-amber-950/50 border border-amber-700/50 rounded-xl p-3 text-amber-300 text-sm flex gap-2">
+        <div className="bg-amber-950/50 border border-amber-700/50 rounded-xl p-3 text-amber-300 text-sm flex gap-2 animate-slide-up">
           <Sun size={16} className="shrink-0 mt-0.5" />
           <span>Both workouts done — but <strong>at least one must be outdoor</strong> to count!</span>
         </div>
       )}
 
-      {/* Mini progress summary */}
+      {/* Mini progress chips */}
       {!isComplete && (
         <div className="flex gap-1.5 justify-center flex-wrap">
           {['Diet', 'WO1', 'WO2', 'Outdoor', 'Water', 'Pages', 'Photo'].map((label, i) => (
             <span
               key={label}
-              className={`text-xs px-2 py-0.5 rounded-full ${tasks[i] ? 'bg-emerald-900/60 text-emerald-400' : 'bg-gray-800 text-gray-600'}`}
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-300
+                ${tasks[i] ? 'bg-emerald-900/60 text-emerald-400' : 'bg-gray-800 text-gray-600'}`}
             >
               {label}
             </span>
@@ -127,7 +136,7 @@ export default function TodayScreen({ challenge }: Props) {
         </div>
       )}
 
-      {/* ── Task 1: Diet ── */}
+      {/* ── Diet ── */}
       <TaskCard
         done={todayRecord.diet}
         icon={<Leaf size={22} />}
@@ -136,7 +145,7 @@ export default function TodayScreen({ challenge }: Props) {
         onToggle={() => updateTodayRecord({ diet: !todayRecord.diet })}
       />
 
-      {/* ── Task 2 & 3: Workouts ── */}
+      {/* ── Workouts ── */}
       <WorkoutCard
         num={1}
         done={todayRecord.workout1}
@@ -158,7 +167,7 @@ export default function TodayScreen({ challenge }: Props) {
         onToggleOutdoor={() => updateTodayRecord({ workout2Outdoor: !todayRecord.workout2Outdoor })}
       />
 
-      {/* ── Task 4: Water ── */}
+      {/* ── Water ── */}
       <TaskCard
         done={todayRecord.waterOz >= 128}
         icon={<Droplets size={22} />}
@@ -171,7 +180,7 @@ export default function TodayScreen({ challenge }: Props) {
         />
       </TaskCard>
 
-      {/* ── Task 5: Reading ── */}
+      {/* ── Reading ── */}
       <TaskCard
         done={todayRecord.pagesRead >= 10}
         icon={<BookOpen size={22} />}
@@ -184,7 +193,7 @@ export default function TodayScreen({ challenge }: Props) {
         />
       </TaskCard>
 
-      {/* ── Task 6: Photo ── */}
+      {/* ── Photo ── */}
       <TaskCard
         done={todayRecord.photoTaken}
         icon={<Camera size={22} />}
@@ -198,10 +207,10 @@ export default function TodayScreen({ challenge }: Props) {
         />
       </TaskCard>
 
-      {/* Notes (collapsible) */}
+      {/* Notes */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <button
-          onClick={() => setShowNotes(v => !v)}
+          onClick={() => { haptic(); setShowNotes(v => !v); }}
           className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-gray-200 transition-colors"
         >
           <span>Notes for today</span>
@@ -218,9 +227,8 @@ export default function TodayScreen({ challenge }: Props) {
         )}
       </div>
 
-      {/* Completed tasks count footer */}
       <p className="text-center text-xs text-gray-600 pb-2">
-        {completedCount} / {tasks.length} tasks completed
+        {completedCount} / {tasks.length} tasks completed today
       </p>
     </div>
   );

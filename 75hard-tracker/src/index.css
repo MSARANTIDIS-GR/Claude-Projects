@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/* ── Keyframes ── */
+@keyframes slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes check-pop {
+  0%   { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.25) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Custom utilities ── */
+@layer utilities {
+  .animate-slide-up  { animation: slide-up  0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .animate-check-pop { animation: check-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .animate-fade-in   { animation: fade-in   0.2s  ease-out both; }
+  .animate-sheet-up  { animation: sheet-up  0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* iOS safe areas */
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pb-safe-nav { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
+}
+
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -13,7 +47,5 @@
     overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
   }
-  #root {
-    min-height: 100svh;
-  }
+  #root { min-height: 100svh; }
 }

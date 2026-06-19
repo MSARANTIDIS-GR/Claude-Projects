@@ -127,7 +127,7 @@ export default function CalendarScreen({ challenge }: Props) {
       {selectedDay && (
         <div className="fixed inset-0 z-40 flex items-end" onClick={() => setSelectedDay(null)}>
           <div
-            className="w-full max-w-lg mx-auto bg-gray-900 border border-gray-700 rounded-t-3xl p-5 space-y-4 shadow-2xl"
+            className="w-full max-w-lg mx-auto bg-gray-900 border border-gray-700 rounded-t-3xl p-5 space-y-4 shadow-2xl animate-sheet-up"
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
