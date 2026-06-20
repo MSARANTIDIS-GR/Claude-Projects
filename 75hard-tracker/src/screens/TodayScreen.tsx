@@ -1,9 +1,10 @@
-import { Dumbbell, Leaf, Droplets, BookOpen, Camera, Sun, TreePine, Trophy, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Dumbbell, Leaf, Droplets, BookOpen, Camera, Sun, TreePine, Trophy, ChevronDown, ChevronUp, Settings, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import TaskCard from '../components/TaskCard';
 import WaterCounter from '../components/WaterCounter';
 import PageCounter from '../components/PageCounter';
 import PhotoCapture from '../components/PhotoCapture';
+import ShareModal from '../components/ShareModal';
 import { haptic } from '../utils/haptics';
 import type { useChallenge } from '../store/useChallenge';
 
@@ -54,7 +55,8 @@ function WorkoutCard({
 
 export default function TodayScreen({ challenge, onOpenSettings }: Props) {
   const { state, todayRecord, updateTodayRecord } = challenge;
-  const [showNotes, setShowNotes] = useState(false);
+  const [showNotes, setShowNotes]   = useState(false);
+  const [showShare, setShowShare]   = useState(false);
 
   const day = state.currentDay;
   const pct = Math.round((day / 75) * 100);
@@ -230,6 +232,23 @@ export default function TodayScreen({ challenge, onOpenSettings }: Props) {
       <p className="text-center text-xs text-gray-600 pb-2">
         {completedCount} / {tasks.length} tasks completed today
       </p>
+
+      {/* Share button */}
+      <button
+        onClick={() => { haptic('medium'); setShowShare(true); }}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-orange-500/50 text-gray-400 hover:text-orange-400 text-sm font-medium transition-all active:scale-95 mb-2"
+      >
+        <Share2 size={16} />
+        Share Progress
+      </button>
+
+      {showShare && (
+        <ShareModal
+          day={state.currentDay}
+          record={todayRecord}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }

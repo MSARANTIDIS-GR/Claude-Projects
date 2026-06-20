@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import type { ChallengeState, DayRecord } from '../types';
 import { today, yesterday } from '../utils/dates';
 import { isDayComplete, createDayRecord } from '../utils/challenge';
@@ -18,66 +20,109 @@ function loadState(): ChallengeState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return { ...DEFAULT_STATE, ...JSON.parse(raw) };
-  } catch {
-    // ignore
-  }
+  } catch { /* ignore */ }
   return DEFAULT_STATE;
 }
 
-function saveState(s: ChallengeState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    // ignore
-  }
+function saveLocal(s: ChallengeState) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
-export function useChallenge() {
-  const [state, setState] = useState<ChallengeState>(loadState);
+// Strip photoData before writing to Firestore (too large for a document)
+function stripPhotos(s: ChallengeState): ChallengeState {
+  return {
+    ...s,
+    days: Object.fromEntries(
+      Object.entries(s.days).map(([k, v]) => [k, { ...v, photoData: null }])
+    ),
+  };
+}
+
+async function loadFromFirestore(uid: string): Promise<ChallengeState | null> {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'data', 'challenge'));
+    if (!snap.exists()) return null;
+    return { ...DEFAULT_STATE, ...snap.data() } as ChallengeState;
+  } catch { return null; }
+}
+
+async function saveToFirestore(uid: string, s: ChallengeState) {
+  try {
+    await setDoc(doc(db, 'users', uid, 'data', 'challenge'), stripPhotos(s));
+  } catch { /* offline — ignore */ }
+}
+
+export function useChallenge(userId?: string | null) {
+  const [state, setState]           = useState<ChallengeState>(loadState);
   const [showResetModal, setShowResetModal] = useState(false);
+  const firestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Persist every change
+  // ── Persist to localStorage on every change ──
+  useEffect(() => { saveLocal(state); }, [state]);
+
+  // ── Firestore: load when user logs in, save on state change ──
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    if (!userId) return;
+    loadFromFirestore(userId).then(remote => {
+      if (!remote) {
+        // First login — upload local state if active
+        if (state.isActive) saveToFirestore(userId, state);
+        return;
+      }
+      // Merge: Firestore wins on challenge metadata,
+      // keep local photoData for days that exist locally
+      setState(prev => {
+        const mergedDays: Record<string, DayRecord> = {};
+        const allDates = new Set([...Object.keys(remote.days), ...Object.keys(prev.days)]);
+        for (const date of allDates) {
+          const r = remote.days[date];
+          const l = prev.days[date];
+          if (r && l) mergedDays[date] = { ...r, photoData: l.photoData };
+          else if (r)  mergedDays[date] = r;
+          else if (l)  mergedDays[date] = l;
+        }
+        // Use remote if it has more progress; otherwise keep local
+        return remote.currentDay >= prev.currentDay
+          ? { ...remote, days: mergedDays }
+          : prev;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
-  // New-day check: detect missed days on app open
+  useEffect(() => {
+    if (!userId || !state.isActive) return;
+    if (firestoreTimer.current) clearTimeout(firestoreTimer.current);
+    firestoreTimer.current = setTimeout(() => saveToFirestore(userId, state), 3000);
+    return () => { if (firestoreTimer.current) clearTimeout(firestoreTimer.current); };
+  }, [state, userId]);
+
+  // ── New-day detection ──
   useEffect(() => {
     if (!state.isActive) return;
     const todayStr = today();
-    if (state.lastCheckedDate === todayStr) return; // already handled today
+    if (state.lastCheckedDate === todayStr) return;
 
     const yesterdayStr = yesterday();
 
-    // User skipped multiple days → auto-reset
     if (state.lastCheckedDate !== null && state.lastCheckedDate < yesterdayStr) {
-      setShowResetModal(true);
-      return;
+      setShowResetModal(true); return;
     }
-
-    // Check if yesterday was completed
     if (state.lastCheckedDate === yesterdayStr) {
       const yRec = state.days[yesterdayStr];
-      if (!yRec?.completed) {
-        setShowResetModal(true);
-        return;
-      }
+      if (!yRec?.completed) { setShowResetModal(true); return; }
     }
 
-    // All good — advance to today
     setState(prev => {
       if (!prev.isActive) return prev;
       const newDays = { ...prev.days };
       if (!newDays[todayStr]) newDays[todayStr] = createDayRecord(todayStr);
-
-      const start = prev.challengeStartDate!;
-      const startMs = new Date(start + 'T00:00:00').getTime();
-      const todayMs = new Date(todayStr + 'T00:00:00').getTime();
-      const dayNum = Math.round((todayMs - startMs) / 86_400_000) + 1;
-
+      const startMs  = new Date(prev.challengeStartDate! + 'T00:00:00').getTime();
+      const todayMs  = new Date(todayStr + 'T00:00:00').getTime();
+      const dayNum   = Math.round((todayMs - startMs) / 86_400_000) + 1;
       return { ...prev, currentDay: Math.min(dayNum, 75), days: newDays, lastCheckedDate: todayStr };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isActive, state.lastCheckedDate]);
 
   const startChallenge = useCallback(() => {
@@ -94,17 +139,14 @@ export function useChallenge() {
 
   const resetChallenge = useCallback(() => {
     const todayStr = today();
-    setState(prev => {
-      const completedDays = prev.currentDay - 1;
-      return {
-        challengeStartDate: todayStr,
-        currentDay: 1,
-        days: { [todayStr]: createDayRecord(todayStr) },
-        bestStreak: Math.max(prev.bestStreak, completedDays),
-        isActive: true,
-        lastCheckedDate: todayStr,
-      };
-    });
+    setState(prev => ({
+      challengeStartDate: todayStr,
+      currentDay: 1,
+      days: { [todayStr]: createDayRecord(todayStr) },
+      bestStreak: Math.max(prev.bestStreak, prev.currentDay - 1),
+      isActive: true,
+      lastCheckedDate: todayStr,
+    }));
     setShowResetModal(false);
   }, []);
 
@@ -112,7 +154,7 @@ export function useChallenge() {
     const todayStr = today();
     setState(prev => {
       const existing = prev.days[todayStr] ?? createDayRecord(todayStr);
-      const updated = { ...existing, ...updates };
+      const updated  = { ...existing, ...updates };
       updated.completed = isDayComplete(updated);
       return { ...prev, days: { ...prev.days, [todayStr]: updated } };
     });

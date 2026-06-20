@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Download, RefreshCw, AlertTriangle, Trophy } from 'lucide-react';
+import { X, Download, RefreshCw, AlertTriangle, Trophy, LogOut } from 'lucide-react';
 import type { ChallengeState } from '../types';
 import { formatDate } from '../utils/dates';
 import { haptic } from '../utils/haptics';
@@ -9,6 +9,8 @@ interface Props {
   onClose: () => void;
   state: ChallengeState;
   onReset: () => void;
+  onLogout?: () => void;
+  userEmail?: string | null;
 }
 
 function exportData(state: ChallengeState) {
@@ -24,7 +26,7 @@ function exportData(state: ChallengeState) {
   URL.revokeObjectURL(url);
 }
 
-export default function SettingsSheet({ open, onClose, state, onReset }: Props) {
+export default function SettingsSheet({ open, onClose, state, onReset, onLogout, userEmail }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
 
   if (!open) return null;
@@ -103,6 +105,27 @@ export default function SettingsSheet({ open, onClose, state, onReset }: Props) 
             <span className="text-xs text-gray-600 font-medium uppercase tracking-wider">Danger Zone</span>
             <div className="flex-1 h-px bg-gray-800" />
           </div>
+
+          {/* Account info + logout */}
+          {onLogout && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-800" />
+                <span className="text-xs text-gray-600 font-medium uppercase tracking-wider">Account</span>
+                <div className="flex-1 h-px bg-gray-800" />
+              </div>
+              {userEmail && (
+                <p className="text-xs text-gray-500 text-center">{userEmail}</p>
+              )}
+              <button
+                onClick={() => { haptic('medium'); onLogout(); onClose(); }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm font-medium transition-all active:scale-95"
+              >
+                <LogOut size={16} />
+                Log Out
+              </button>
+            </>
+          )}
 
           {/* Manual reset */}
           {!confirmReset ? (
